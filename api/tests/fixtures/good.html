@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>How to optimize a site for AI search | Acme Analytics</title>
+  <meta name="description" content="A practical guide to making your website readable and citable by ChatGPT, Perplexity, Gemini and Google AI Overviews." />
+  <meta property="og:title" content="How to optimize a site for AI search" />
+  <meta property="og:site_name" content="Acme Analytics" />
+  <link rel="canonical" href="https://acme.example/guide/ai-search" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Acme Analytics",
+    "url": "https://acme.example",
+    "sameAs": ["https://en.wikipedia.org/wiki/Acme", "https://x.com/acme", "https://github.com/acme"]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "How to optimize a site for AI search",
+    "datePublished": "2026-01-15",
+    "dateModified": "2026-09-01",
+    "author": {"@type": "Person", "name": "Jane Doe", "url": "https://acme.example/about/jane-doe"}
+  }
+  </script>
+</head>
+<body>
+  <h1>How to optimize a site for AI search</h1>
+  <p class="byline">By <a rel="author" href="/about/jane-doe">Jane Doe</a> — <time datetime="2026-09-01">September 1, 2026</time></p>
+
+  <h2>What is AI search optimization?</h2>
+  <p>AI search optimization is the practice of structuring a website so that generative answer engines can read, retrieve and cite it. It differs from classic SEO because the goal is being quoted inside an answer rather than ranking in a list of links. Roughly 58 percent of searches now end without a click, which is why the distinction matters.</p>
+  <p>The work splits into two halves. The first is mechanical access: the crawler has to be able to fetch and parse your HTML at all. The second is representational: once the content is readable, it has to be structured the way retrieval systems reward, with self-contained claims that survive being lifted out of context. Most sites fail the first half without knowing it, because a permissive robots.txt says nothing about what the CDN in front of it is doing to bot traffic. Teams routinely discover that their content has been invisible for months.</p>
+
+  <h2>How much does it cost to fix?</h2>
+  <p>Most fixes cost nothing but developer time, and the highest-impact change is usually a single robots.txt edit taking under 5 minutes. Server-side rendering is the expensive exception, typically 2 to 3 weeks of work for an existing client-rendered application.</p>
+  <ul>
+    <li>robots.txt changes: 5 minutes</li>
+    <li>Schema markup: 2 hours per template</li>
+    <li>Heading and content restructuring: 1 day per page</li>
+    <li>Server-side rendering migration: 2 to 3 weeks</li>
+    <li>llms.txt: 30 minutes</li>
+  </ul>
+  <p>Our own measurements across 1,200 audited domains put the median remediation at 11 hours of engineering time. Budget more if the site is a single-page application, because that is the one change that touches the whole rendering pipeline rather than a template.</p>
+
+  <h2>Which crawlers should you allow?</h2>
+  <p>Allow all six of the major AI crawlers unless you have a specific licensing reason not to, because blocking them removes you from the answers entirely rather than protecting anything. The distinction between training crawlers and retrieval crawlers is the one most teams get wrong.</p>
+  <table>
+    <tr><th>Crawler</th><th>Operator</th><th>Purpose</th></tr>
+    <tr><td>GPTBot</td><td>OpenAI</td><td>Model training</td></tr>
+    <tr><td>OAI-SearchBot</td><td>OpenAI</td><td>ChatGPT live retrieval</td></tr>
+    <tr><td>PerplexityBot</td><td>Perplexity</td><td>Index and retrieval</td></tr>
+    <tr><td>Google-Extended</td><td>Google</td><td>Gemini grounding</td></tr>
+  </table>
+  <p>Further reading is available from <a href="https://en.wikipedia.org/wiki/Web_crawler">Wikipedia on web crawlers</a> and the <a href="https://www.nist.gov/">NIST</a> guidance on content authenticity. Both are worth reading before deciding to block anything, since the tradeoff is frequently misunderstood as a privacy decision when it is really a distribution decision.</p>
+
+  <h2>How do you measure whether it worked?</h2>
+  <p>Measure by asking the engines directly: run a fixed set of buyer-intent prompts against each assistant monthly and record whether your domain appears in the citations. Server logs are the second signal, since AI crawler hits are labelled by user-agent and rose 340 percent year over year across our sample.</p>
+  <p>Treat the citation rate as the headline metric and the crawler hit rate as the leading indicator. Crawl activity moves within days of a robots.txt change, whereas citation behaviour lags by several weeks because the engines refresh their indexes on their own schedule. If crawl traffic climbs and citations stay flat, the problem has moved from access to representation, and the next place to look is your heading structure.</p>
+
+  <h2>Where should you start?</h2>
+  <p>Start with robots.txt and your CDN bot settings, because they gate everything else and take minutes rather than days. Only once you have confirmed that all six crawlers receive a 200 response should you spend time on schema or content structure.</p>
+  <ol>
+    <li>Verify every AI crawler gets a 200 response</li>
+    <li>Confirm content exists in the raw HTML</li>
+    <li>Add Organization schema with sameAs links</li>
+    <li>Rewrite headings as questions</li>
+    <li>Put a direct answer under each heading</li>
+  </ol>
+  <footer><a href="/about">About</a> · <a href="/contact">Contact</a></footer>
+</body>
+</html>

@@ -1,0 +1,20 @@
+[project]
+name = "aidisco-api"
+version = "0.1.0"
+description = "AI discoverability scanner API"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "httpx>=0.28",
+    "selectolax>=0.3.21",
+    "asyncpg>=0.30",
+    "pydantic>=2.9",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
