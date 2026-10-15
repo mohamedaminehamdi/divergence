@@ -322,3 +322,29 @@ def test_input_wrapped_in_label_counts_as_labelled():
     f = next(fn for fn in CHECKS if fn.__name__ == "labelled_inputs")(Ctx(replace(snap, html=html)))
     assert not f.passed, "the orphan input should still fail"
     assert "1 of 3" in f.evidence, f.evidence
+
+
+def test_picture_sources_count_as_modern_formats():
+    """<picture> with AVIF/WebP <source>s serves a modern format even though its
+    <img src> fallback is a JPEG. Reading only the <img> called that legacy."""
+    html = ("<html><body>"
+            + '<picture><source type="image/avif" srcset="a.avif"><source type="image/webp" srcset="a.webp">'
+              '<img src="a.jpg" alt="x"></picture>' * 4
+            + "</body></html>")
+    f = next(fn for fn in CHECKS if fn.__name__ == "image_formats")(Ctx(replace(make_snapshot("good.html"), html=html)))
+    assert f.passed, f.evidence
+    assert "0/4 images use JPEG/PNG; 4 use srcset" in f.evidence, f.evidence
+
+
+@pytest.mark.parametrize("path", ["/", "/de", "/fr", "/fr-ca/"])
+def test_breadcrumbs_do_not_apply_to_home_pages(path):
+    """A home page, including a language root, is the root of every trail."""
+    snap = replace(make_snapshot("good.html"), final_url=f"https://acme.example{path}")
+    f = next(fn for fn in CHECKS if fn.__name__ == "breadcrumbs")(Ctx(snap))
+    assert f.passed and "Home page" in f.evidence
+
+
+def test_breadcrumbs_still_required_below_the_home_page():
+    snap = replace(make_snapshot("good.html"), final_url="https://acme.example/guide/ai-search")
+    f = next(fn for fn in CHECKS if fn.__name__ == "breadcrumbs")(Ctx(snap))
+    assert "Home page" not in f.evidence

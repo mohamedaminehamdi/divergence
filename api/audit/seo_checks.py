@@ -127,6 +127,12 @@ def twitter_card(c: Ctx) -> Finding:
 
 @check
 def breadcrumbs(c: Ctx) -> Finding:
+    # A home page is the root of every trail, so it has nothing to show. That
+    # includes a language root such as /de or /fr-ca.
+    path = urlparse(c.snap.final_url).path.rstrip("/")
+    if path == "" or re.fullmatch(r"/[a-z]{2}(?:-[a-z]{2})?", path, re.I):
+        return Finding("breadcrumbs", _C, "Breadcrumb navigation", True, "low",
+                       "Home page: breadcrumbs do not apply.")
     ok = "BreadcrumbList" in c.schema_types() or \
         c.tree.css_first('[class*=breadcrumb], nav[aria-label*="readcrumb"]') is not None
     return Finding(
@@ -266,9 +272,27 @@ def image_formats(c: Ctx) -> Finding:
     imgs = c.tree.css("img")
     if not imgs:
         return Finding("image_formats", _C, "Modern image formats", True, "low", "No images on this page.")
-    srcs = [(i.attributes.get("src") or "").lower() for i in imgs]
-    legacy = [s for s in srcs if re.search(r"\.(jpe?g|png)(\?|$)", s)]
-    responsive = sum(1 for i in imgs if i.attributes.get("srcset"))
+    def modern(img) -> bool:
+        # <picture><source type="image/avif|webp"> serves a modern format even
+        # though the <img src> fallback inside it is a JPEG or PNG.
+        parent = img.parent
+        if parent is not None and parent.tag == "picture":
+            types = [(s.attributes.get("type") or "").lower() for s in parent.css("source")]
+            if any(t in ("image/avif", "image/webp") for t in types):
+                return True
+        srcset = (img.attributes.get("srcset") or "").lower()
+        return bool(re.search(r"\.(avif|webp)\b", srcset))
+
+    legacy = [i for i in imgs
+              if re.search(r"\.(jpe?g|png)(\?|$)", (i.attributes.get("src") or "").lower())
+              and not modern(i)]
+    # srcset lives on the <source> elements when the image is in a <picture>.
+    responsive = sum(
+        1 for i in imgs
+        if i.attributes.get("srcset")
+        or (i.parent is not None and i.parent.tag == "picture"
+            and any(s.attributes.get("srcset") for s in i.parent.css("source")))
+    )
     ok = len(legacy) <= len(imgs) * 0.3
     return Finding(
         "image_formats", _C, "Modern image formats", ok, "low",
