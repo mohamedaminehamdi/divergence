@@ -29,7 +29,10 @@ AUTHORITATIVE_DOMAINS = {
 
 QUOTE_ATTRIBUTION_RE = re.compile(r'["“][^"”]{10,300}["”]\s*(?:[-—–])\s*\w+')
 STAT_RE = re.compile(
-    r"\b\d+(?:\.\d+)?%|\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b"
+    # German, French and Italian put a (non-breaking) space before % and use a
+    # decimal comma: "94 %", "3,5 %". Matching only "94%" failed every
+    # translated page for following its own language's typography.
+    r"\b\d+(?:[.,]\d+)?[   ]?%|\b\d{1,3}(?:,\d{3})+(?:\.\d+)?\b"
     r"|\$\d+(?:[.,]\d+)*(?:\s*(?:M|B|K|million|billion|thousand))?\b"
     r"|\b\d+\s*(?:million|billion|trillion|thousand)\b|\b\d+(?:\.\d+)?\s*(?:x|X)\b",
     re.I,
@@ -60,7 +63,10 @@ GENERIC_ALT_RE = re.compile(
     r"|img\d+|image\d+|photo\d+|dsc\d+|pic\d+|untitled)$", re.I,
 )
 CITABLE_NUMERIC_RE = re.compile(
-    r"\b\d+(?:\.\d+)?%|\$\d+(?:[.,]\d+)*|€\d+(?:[.,]\d+)*|\b\d{4}\b"
+    # Same locale fix as STAT_RE: "94 %" and "3,5 %", plus euro amounts written
+    # the European way with the symbol after the number, "5.000 €".
+    r"\b\d+(?:[.,]\d+)?[ \u00a0\u202f]?%|\$\d+(?:[.,]\d+)*|€\d+(?:[.,]\d+)*"
+    r"|\b\d+(?:[.,]\d+)*[ \u00a0\u202f]?€|\b\d{4}\b"
     r"|\b\d+(?:\.\d+)?\s*(?:million|billion|thousand)\b|\b\d+(?:\.\d+)?\s*(?:x|times)\b", re.I,
 )
 PROPER_NAME_RE = re.compile(
@@ -158,6 +164,7 @@ class CitCtx:
     links: list[tuple[str, str]]
     domain: str
     headers: dict[str, str]
+    lang: str = ""
     _c: dict = field(default_factory=dict)
 
     @property
@@ -435,6 +442,11 @@ def _passage_density(c: CitCtx):
 
 @method("readability", 8)
 def _readability(c: CitCtx):
+    # Flesch-Kincaid and its English syllable rules mean nothing on other
+    # languages (Italian's final "e" is not silent), so other languages are left
+    # out of the score rather than failed by a formula that cannot read them.
+    if c.lang not in ("", "en"):
+        return None, False, f"not scored: the formula is English-only, page is '{c.lang}'"
     sents, words = c.sentences, [w for w in c.words if w.isalpha()]
     if not sents or not words:
         return 0, False, "no prose"
@@ -976,6 +988,7 @@ def run(ctx) -> dict:
     c = CitCtx(
         text=ctx.body_text, tree=ctx.tree, headings=ctx.headings, jsonld=ctx.jsonld,
         links=ctx.links, domain=ctx.snap.domain.lower(), headers=ctx.snap.headers,
+        lang=getattr(ctx, "lang", ""),
     )
     results = []
     for name, max_score, fn in METHODS:
@@ -983,13 +996,18 @@ def run(ctx) -> dict:
             score_, detected, detail = fn(c)
         except Exception as e:  # a single bad method must not sink the audit
             score_, detected, detail = 0, False, f"error: {type(e).__name__}"
+        if score_ is None:
+            # Not applicable to this page: out of both the score and the maximum.
+            results.append(MethodScore(name, 0, 0, False, detail))
+            continue
         results.append(MethodScore(name, _clamp(score_, 0, max_score), max_score, bool(detected), detail))
 
     raw = sum(m.score for m in results)
+    possible = sum(m.max_score for m in results)
     return {
-        "score": round(100 * raw / MAX_POSSIBLE) if MAX_POSSIBLE else 0,
+        "score": round(100 * raw / possible) if possible else 0,
         "raw": raw,
-        "max_possible": MAX_POSSIBLE,
+        "max_possible": possible,
         "methods": [
             {"name": m.name, "score": m.score, "max_score": m.max_score,
              "detected": m.detected, "detail": m.detail}

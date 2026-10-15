@@ -257,3 +257,39 @@ def test_a_broken_method_does_not_sink_the_audit():
 def test_empty_page_scores_zero_without_crashing():
     result = cit.run(_FakeCtx(ctx("")))
     assert 0 <= result["score"] <= 100
+
+
+def test_statistics_accept_locale_percent_formats():
+    """German, French and Italian write "94 %" with a (non-breaking) space and a
+    decimal comma. Matching only "94%" failed every translated page."""
+    from audit.citability import STAT_RE
+
+    for s in ["94%", "94 %", "94 %", "94 %", "3,5 %", "12.5%"]:
+        assert STAT_RE.search(s), s
+    assert not STAT_RE.search("version 4 of the plan")
+
+
+def test_readability_is_not_scored_on_non_english_pages():
+    """Flesch-Kincaid is English-only, so a German page is left out of the
+    readability score rather than failed by it, and the maximum shrinks to match."""
+    from dataclasses import replace
+    from audit import Ctx, citability_engine
+    from tests.test_audit import make_snapshot
+
+    snap = make_snapshot("good.html")
+    en = citability_engine.run(Ctx(snap))
+    assert 'lang="en"' in snap.html
+    de = citability_engine.run(Ctx(replace(snap, html=snap.html.replace('lang="en"', 'lang="de"', 1))))
+
+    de_read = next(m for m in de["methods"] if m["name"] == "readability")
+    assert de_read["max_score"] == 0 and "English-only" in de_read["detail"]
+    assert de["max_possible"] == en["max_possible"] - 8
+
+
+def test_citable_numbers_accept_european_formats():
+    """Answer capsules need a citable figure. "94 %" and "5.000 €" are how German,
+    French and Italian write them, and were invisible to the detector."""
+    from audit.citability import CITABLE_NUMERIC_RE as R
+
+    for s in ["94%", "94 %", "94 %", "€5,000", "5.000 €", "5.000 €", "2026"]:
+        assert R.search(s), s

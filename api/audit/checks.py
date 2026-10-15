@@ -91,6 +91,13 @@ class Ctx:
         return HTMLParser(self.snap.html)
 
     @cached_property
+    def lang(self) -> str:
+        """Primary language subtag from <html lang>, e.g. "de" for "de-DE".
+        Empty when undeclared, which is treated as English."""
+        node = self.tree.css_first("html")
+        return ((node.attributes.get("lang") if node else None) or "").split("-")[0].lower()
+
+    @cached_property
     def body_text(self) -> str:
         # Parse a throwaway copy: decompose() mutates the tree in place, and stripping
         # <script> here would destroy the JSON-LD that other checks read off self.tree.

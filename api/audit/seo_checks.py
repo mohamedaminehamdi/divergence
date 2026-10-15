@@ -329,6 +329,11 @@ def word_count_floor(c: Ctx) -> Finding:
 
 @check
 def readability_ease(c: Ctx) -> Finding:
+    # Flesch Reading Ease is an English formula, so for other languages it is not
+    # measured, following this check's existing "cannot measure" convention.
+    if c.lang not in ("", "en"):
+        return Finding("readability_ease", _C, "Reading ease", True, "low",
+                       f"Not measured: Flesch Reading Ease is English-only and this page is '{c.lang}'.")
     sents = [s for s in re.split(r"(?<=[.!?])\s+", c.body_text) if s.strip()]
     words = [w for w in c.words if w.isalpha()]
     if len(words) < 100 or not sents:
