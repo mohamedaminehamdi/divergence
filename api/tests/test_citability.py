@@ -293,3 +293,9 @@ def test_citable_numbers_accept_european_formats():
 
     for s in ["94%", "94 %", "94 %", "€5,000", "5.000 €", "5.000 €", "2026"]:
         assert R.search(s), s
+
+
+def test_decorative_images_are_left_out_of_alt_quality():
+    """Only-decorative images score like no images: nothing to describe."""
+    assert run_method("image_alt_quality", ctx('<img src="a.svg" alt="">'))[0] == 3
+    assert run_method("image_alt_quality", ctx('<img src="a.png">'))[0] == 0

@@ -348,3 +348,25 @@ def test_breadcrumbs_still_required_below_the_home_page():
     snap = replace(make_snapshot("good.html"), final_url="https://acme.example/guide/ai-search")
     f = next(fn for fn in CHECKS if fn.__name__ == "breadcrumbs")(Ctx(snap))
     assert "Home page" not in f.evidence
+
+
+def _check(name: str, html: str) -> Finding:
+    return next(fn for fn in CHECKS if fn.__name__ == name)(Ctx(replace(make_snapshot("good.html"), html=html)))
+
+
+def test_async_nomodule_and_module_scripts_do_not_block_render():
+    """Boolean attributes parse to None, so a truthiness test called every
+    `<script async>` render-blocking. Next.js ships exactly this head."""
+    head = ('<script src="a.js" async></script><script src="b.js" async=""></script>'
+            '<script src="c.js" defer></script><script src="d.js" noModule></script>'
+            '<script src="e.js" type="module"></script>')
+    assert _check("render_blocking", f"<html><head>{head}</head><body></body></html>").passed
+    f = _check("render_blocking", f'<html><head>{head}<script src="f.js"></script></head><body></body></html>')
+    assert not f.passed and f.evidence.startswith("1 script"), f.evidence
+
+
+def test_decorative_alt_is_not_missing_alt():
+    """alt="" declares an image decorative, as the check's own fix text says."""
+    assert _check("image_alt_text", '<html><body><img src="a.svg" alt=""><img src="b.svg" alt></body></html>').passed
+    f = _check("image_alt_text", '<html><body><img src="a.svg" alt=""><img src="b.png"></body></html>')
+    assert not f.passed and "1 with no alt" in f.evidence, f.evidence

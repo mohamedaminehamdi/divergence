@@ -231,8 +231,9 @@ def image_alt_text(c: Ctx) -> Finding:
     imgs = c.tree.css("img")
     if not imgs:
         return Finding("image_alt", _C, "Image alt text", True, "low", "No images on this page.")
+    # alt="" marks an image decorative, which is correct; only an absent alt is missing.
+    missing = [i for i in imgs if "alt" not in i.attributes]
     alts = [(i.attributes.get("alt") or "").strip() for i in imgs]
-    missing = [a for a in alts if not a]
     bad_len = [a for a in alts if a and not (ALT_MIN <= len(a) <= ALT_MAX)]
     ok = not missing and len(bad_len) <= len(imgs) // 2
     return Finding(
@@ -444,8 +445,11 @@ def dom_size(c: Ctx) -> Finding:
 
 @check
 def render_blocking(c: Ctx) -> Finding:
+    # Boolean attributes parse to None, so test presence, not truthiness. nomodule
+    # scripts never run in modern browsers and modules are deferred by default.
     scripts = [s for s in c.tree.css("head script[src]")
-               if not s.attributes.get("async") and not s.attributes.get("defer")]
+               if not {"async", "defer", "nomodule"} & s.attributes.keys()
+               and s.attributes.get("type") != "module"]
     ok = len(scripts) == 0
     return Finding(
         "render_blocking", _C, "Render-blocking scripts", ok, "medium",

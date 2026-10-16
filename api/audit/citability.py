@@ -478,9 +478,11 @@ def _faq(c: CitCtx):
 
 @method("image_alt_quality", 5)
 def _image_alt(c: CitCtx):
-    imgs = c.tree.css("img")
+    # Decorative images (alt="") carry nothing to describe, so they are left out.
+    imgs = [i for i in c.tree.css("img") if (i.attributes.get("alt") or "").strip()
+            or "alt" not in i.attributes]
     if not imgs:
-        return 3, False, "no images (neutral)"
+        return 3, False, "no content images (neutral)"
     alts = [(i.attributes.get("alt") or "").strip() for i in imgs]
     missing = sum(1 for a in alts if not a)
     descriptive = sum(1 for a in alts if len(a) > 10 and not GENERIC_ALT_RE.match(a))
